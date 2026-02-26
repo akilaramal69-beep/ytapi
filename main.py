@@ -39,7 +39,12 @@ class ExtractRequest(BaseModel):
     url: str
     proxy: Optional[str] = None
 
-# 1. Force the PATH in the current process memory so yt-dlp finds Node.js
+# THE PROXY BYPASS (CRITICAL)
+# Tell yt-dlp and the OS to never proxy local requests to the POT Server
+os.environ['NO_PROXY'] = '127.0.0.1,localhost,::1'
+os.environ['no_proxy'] = '127.0.0.1,localhost,::1'
+
+# 1. Force the PATH in the current process memory so yt-dlp finds Node.js (Backup, since QuickJS is primary)
 node_path = shutil.which("node")
 if node_path:
     os.environ["PATH"] = f"{os.path.dirname(node_path)}:{os.environ.get('PATH', '')}"
