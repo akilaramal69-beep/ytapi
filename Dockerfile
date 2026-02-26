@@ -9,13 +9,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     ca-certificates \
-    nodejs \
-    npm \
     wget \
     git \
-    wireguard-tools \
     iproute2 \
-    && ln -sf /usr/bin/nodejs /usr/bin/node \
+    wireguard-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js from official NodeSource to ensure we get a modern version and working npm
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && ln -sf /usr/bin/node /usr/bin/nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Install wgcf (WARP config generator)
