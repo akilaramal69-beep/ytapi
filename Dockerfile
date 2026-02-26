@@ -34,6 +34,7 @@ RUN npm install -g youtube-po-token-generator global-agent
 RUN git clone --single-branch --branch 1.2.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /app/bgutil-provider \
     && cd /app/bgutil-provider/server \
     && npm ci \
+    && npm install global-agent \
     && npx tsc \
     && python3 -m pip install -U bgutil-ytdlp-pot-provider
 
