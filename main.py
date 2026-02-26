@@ -45,33 +45,40 @@ async def extract_info(req: ExtractRequest):
     active_proxy = req.proxy or os.environ.get("USE_PROXY") or "socks5://127.0.0.1:1080"
     ua = os.environ.get("USER_AGENT") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     
-    def run_ytdlp(force_web=False):
-        cmd = ["python", "-m", "yt_dlp", "--dump-json", "--no-warnings", req.url]
+    def run_ytdlp(force_web=False, verbose=False):
+        cmd = ["python", "-m", "yt_dlp", "--dump-json", req.url]
+        if verbose:
+            cmd.append("--verbose")
+        else:
+            cmd.append("--no-warnings")
+            
         if active_proxy:
             cmd.extend(["--proxy", active_proxy])
         if COOKIES_FILE:
             cmd.extend(["--cookies", COOKIES_FILE])
         cmd.extend(["--user-agent", ua])
         
-        # Extractor args for client spoofing
-        # The bgutil plugin handles tokens automatically if the server is running on localhost:4416
-        if force_web:
-            cmd.extend(["--extractor-args", "youtube:player_client=web"])
-        else:
-            # Default to android/mweb for first attempt as it's often faster
-            cmd.extend(["--extractor-args", "youtube:player_client=android,mweb"])
+        # Extractor args
+        # 1. Player client spoofing
+        client = "web" if force_web else "android,mweb"
+        
+        # 2. Explicitly point to the local BgUtils POT provider server
+        # Even though it's supposed to be automatic, being explicit is safer
+        ext_args = f"youtube:player_client={client};youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"
+        
+        cmd.extend(["--extractor-args", ext_args])
         
         logger.info(f"Running command: {' '.join(cmd)}")
         return subprocess.run(cmd, capture_output=True, text=True)
 
-    # Attempt 1: Standard extraction (Let the plugin handle tokens)
+    # Attempt 1: Standard extraction
     result = run_ytdlp()
     
     # Check if we got a "bot" block error or sign-in requirement
     if result.returncode != 0 and ("Sign in to confirm you’re not a bot" in result.stderr or "403" in result.stderr):
-        logger.warning("Extraction issues detected. Retrying with 'web' client forced...")
-        # Attempt 2: Force 'web' client (matches the provider's native scripts better)
-        result = run_ytdlp(force_web=True)
+        logger.warning("Extraction blocked or failed. Retrying with 'web' client and verbose logging...")
+        # Attempt 2: Force 'web' client and enable verbose for debugging
+        result = run_ytdlp(force_web=True, verbose=True)
 
     # Final result handling
     try:
