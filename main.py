@@ -71,19 +71,17 @@ async def extract_info(req: ExtractRequest):
         # Extractor args
         client = "web" if force_web else "android,mweb"
         
-        # 1. Point to HTTP provider
-        # 2. ALSO point to the local script path as a backup (yt-dlp plugin uses this)
-        # 3. Use the correct /app path instead of the /root default
-        script_path = "/app/bgutil-provider/server/build/generate_once.js"
-        ext_args = (
-            f"youtube:player_client={client};"
-            f"youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416;"
-            f"youtubepot-bgutilscript:script_path={script_path}"
-        )
-        
-        cmd.extend(["--extractor-args", ext_args])
+        # Pass each extractor argument separately to avoid yt-dlp parsing errors combining them
+        cmd.extend(["--extractor-args", f"youtube:player_client={client}"])
+        cmd.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
         
         env = os.environ.copy()
+        
+        # Ensure Node.js directory is explicitly in PATH for yt-dlp's JS runtime check
+        current_path = env.get("PATH", "")
+        if "/usr/bin" not in current_path:
+            env["PATH"] = f"{current_path}:/usr/bin:/usr/local/bin"
+            
         if active_proxy:
             env["ALL_PROXY"] = active_proxy
             env["HTTP_PROXY"] = active_proxy
