@@ -79,8 +79,17 @@ async def extract_info(req: ExtractRequest):
         
         # Ensure Node.js directory is explicitly in PATH for yt-dlp's JS runtime check
         current_path = env.get("PATH", "")
-        # Prepend standard bin paths so node is found first
-        env["PATH"] = f"/usr/bin:/usr/local/bin:{current_path}"
+        
+        # BULLETPROOF FIX: Dynamically find exactly where node is installed
+        import shutil
+        node_exec_path = shutil.which("node")
+        if node_exec_path:
+            node_dir = os.path.dirname(node_exec_path)
+            # Prepend the exact directory where node lives to the PATH
+            env["PATH"] = f"{node_dir}:{current_path}"
+        else:
+            # Fallback to standard bin paths if shutil.which fails
+            env["PATH"] = f"/usr/bin:/usr/local/bin:{current_path}"
             
         if active_proxy:
             # Explicitly pass the proxy to yt-dlp to prevent IP mismatch leaks
