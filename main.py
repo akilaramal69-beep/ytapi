@@ -4,6 +4,8 @@ import logging
 import subprocess
 import tempfile
 import base64
+import shutil
+import yt_dlp
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -37,92 +39,53 @@ class ExtractRequest(BaseModel):
     url: str
     proxy: Optional[str] = None
 
+# 1. Force the PATH in the current process memory so yt-dlp finds Node.js
+node_path = shutil.which("node")
+if node_path:
+    os.environ["PATH"] = f"{os.path.dirname(node_path)}:{os.environ.get('PATH', '')}"
+    logger.info(f"Forced exact Node.js path into current process memory: {os.environ['PATH']}")
+
 @app.post("/extract")
 async def extract_info(req: ExtractRequest):
     """Extract metadata using yt-dlp with WARP, automatic PO Tokens via BgUtils, and Cookies"""
+    logger.info("Starting native yt-dlp extraction...")
     
-    # Base command logic
-    # Debug check for Node.js (yt-dlp needs this for JS challenges)
-    try:
-        node_v = subprocess.check_output(["node", "-v"], text=True).strip()
-        logger.info(f"Node.js found: {node_v}")
-    except Exception as e:
-        logger.error(f"Node.js NOT found in PATH: {e}")
-        # Try to find it
-        for path in ["/usr/bin/node", "/usr/local/bin/node", "/usr/bin/nodejs"]:
-            if os.path.exists(path):
-                logger.info(f"Found node at {path}")
-
     # Use socks5h for remote DNS resolution via WARP
     active_proxy = req.proxy or os.environ.get("USE_PROXY") or "socks5h://127.0.0.1:1080"
     ua = os.environ.get("USER_AGENT") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     
-    def run_ytdlp(force_web=False, verbose=False):
-        cmd = ["python", "-m", "yt_dlp", "--dump-json", req.url]
-        if verbose:
-            cmd.append("--verbose")
-        else:
-            cmd.append("--no-warnings")
-            
-        if COOKIES_FILE:
-            cmd.extend(["--cookies", COOKIES_FILE])
-        cmd.extend(["--user-agent", ua])
-        
-        # Extractor args
-        client = "web" if force_web else "android,mweb"
-        
-        # Pass each extractor argument separately to avoid yt-dlp parsing errors combining them
-        cmd.extend(["--extractor-args", f"youtube:player_client={client}"])
-        cmd.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
-        
-        env = os.environ.copy()
-        
-        # Ensure Node.js directory is explicitly in PATH for yt-dlp's JS runtime check
-        current_path = env.get("PATH", "")
-        
-        # BULLETPROOF FIX: Dynamically find exactly where node is installed
-        import shutil
-        node_exec_path = shutil.which("node")
-        if node_exec_path:
-            node_dir = os.path.dirname(node_exec_path)
-            # Prepend the exact directory where node lives to the PATH
-            env["PATH"] = f"{node_dir}:{current_path}"
-        else:
-            # Fallback to standard bin paths if shutil.which fails
-            env["PATH"] = f"/usr/bin:/usr/local/bin:{current_path}"
-            
-        if active_proxy:
-            # Explicitly pass the proxy to yt-dlp to prevent IP mismatch leaks
-            cmd.extend(["--proxy", active_proxy])
-            # Also set env vars just in case other modules need them
-            env["ALL_PROXY"] = active_proxy
-            env["HTTP_PROXY"] = active_proxy
-            env["HTTPS_PROXY"] = active_proxy
-            
-        env["NO_PROXY"] = "127.0.0.1,localhost"
-        
-        logger.info(f"Running command: {' '.join(cmd)}")
-        return subprocess.run(cmd, capture_output=True, text=True, env=env)
-
-    # Attempt 1: Standard extraction
-    result = run_ytdlp()
+    # Define the arguments for yt_dlp object
+    ydl_opts = {
+        'dumpjson': True,
+        'proxy': active_proxy,
+        'http_headers': {'User-Agent': ua},
+        'verbose': True,
+        'no_warnings': False,
+        'nocheckcertificate': True,
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['web']
+            },
+            'youtubepot-bgutilhttp': {
+                'base_url': ['http://127.0.0.1:4416']
+            }
+        }
+    }
     
-    # Check if we got a "bot" block error or sign-in requirement
-    if result.returncode != 0 and ("Sign in to confirm you’re not a bot" in result.stderr or "403" in result.stderr):
-        logger.warning("Extraction blocked or failed. Retrying with 'web' client and verbose logging...")
-        # Attempt 2: Force 'web' client and enable verbose for debugging
-        result = run_ytdlp(force_web=True, verbose=True)
+    if COOKIES_FILE:
+        ydl_opts['cookiefile'] = COOKIES_FILE
 
-    # Final result handling
+    # Execute directly in Python (No subprocesses!)
     try:
-        if result.returncode != 0:
-            logger.error(f"yt-dlp error: {result.stderr}")
-            raise HTTPException(status_code=400, detail=result.stderr)
-        
-        info = json.loads(result.stdout)
-        return info
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # extract_info with download=False extracts metadata
+            info = ydl.extract_info(req.url, download=False)
+            return info
+    except yt_dlp.utils.DownloadError as e:
+        logger.error(f"yt-dlp native extraction failed: {e}")
+        # Could try falling back to without proxy or different client, but for now just raise
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        if isinstance(e, HTTPException): raise e
         logger.error(f"Execution error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
