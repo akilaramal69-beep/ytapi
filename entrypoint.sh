@@ -31,7 +31,16 @@ PROXY_PID=$!
 # Give it a few seconds to establish connection
 sleep 3
 
-# 3. Start the FastAPI server using Uvicorn
+# 3. Start BgUtils POT Provider server
+echo "Starting BgUtils POT Provider server on port 4416..."
+# We route the provider through the same WARP proxy to ensure token/IP synchronization
+# Global-agent is used for proxying in Node.js processes if they support it
+cd /app/bgutil-provider/server
+HTTP_PROXY=http://127.0.0.1:8080 HTTPS_PROXY=http://127.0.0.1:8080 node build/main.js &
+POT_PID=$!
+cd /app
+
+# 4. Start the FastAPI server using Uvicorn
 export PORT=${PORT:-8000}
 echo "Starting Uvicorn FastAPI server on port $PORT..."
 exec uvicorn main:app --host 0.0.0.0 --port $PORT

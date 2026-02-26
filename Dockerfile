@@ -25,8 +25,15 @@ RUN wget -O /tmp/wireproxy.tar.gz https://github.com/pufferffish/wireproxy/relea
     && tar -xzf /tmp/wireproxy.tar.gz -C /usr/local/bin/ \
     && rm /tmp/wireproxy.tar.gz
 
-# Install youtube-po-token-generator globally
+# Install youtube-po-token-generator globally (kept as secondary fallback if needed manually)
 RUN npm install -g youtube-po-token-generator
+
+# Setup BgUtils POT Provider
+RUN git clone --single-branch --branch v1.2.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /app/bgutil-provider \
+    && cd /app/bgutil-provider/server \
+    && npm ci \
+    && npx tsc \
+    && python3 -m pip install -U bgutil-ytdlp-pot-provider
 
 WORKDIR /app
 
@@ -46,6 +53,6 @@ EXPOSE 8000
 
 # Specify Koyeb's HEALTHCHECK equivalent if needed
 HEALTHCHECK --interval=30s --timeout=5s \
-  CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD curl -f http://localhost:${PORT}/health || exit 1
 
 ENTRYPOINT ["/app/entrypoint.sh"]
