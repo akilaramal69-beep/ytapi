@@ -34,8 +34,10 @@ def get_po_token(proxy: Optional[str] = None):
     """Generate visitorData and poToken using youtube-po-token-generator"""
     env = os.environ.copy()
     if proxy:
-        env["HTTPS_PROXY"] = proxy
-        env["HTTP_PROXY"] = proxy
+        # The PO token generator uses `global-agent` which ONLY supports HTTP proxies, not SOCKS5.
+        # So we route it to the specific HTTP proxy port we opened in wireproxy (8080).
+        env["HTTPS_PROXY"] = "http://127.0.0.1:8080"
+        env["HTTP_PROXY"] = "http://127.0.0.1:8080"
     
     logger.info("Generating PO token...")
     try:

@@ -14,6 +14,9 @@ if [ ! -f "wgcf-profile.conf" ]; then
     echo "" >> wgcf-profile.conf
     echo "[Socks5]" >> wgcf-profile.conf
     echo "BindAddress = 127.0.0.1:1080" >> wgcf-profile.conf
+    echo "" >> wgcf-profile.conf
+    echo "[http]" >> wgcf-profile.conf
+    echo "BindAddress = 127.0.0.1:8080" >> wgcf-profile.conf
     
     echo "WARP config generated."
 else
