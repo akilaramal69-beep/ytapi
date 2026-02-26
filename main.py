@@ -67,6 +67,7 @@ async def extract_info(req: ExtractRequest):
         'verbose': True,
         'no_warnings': False,
         'nocheckcertificate': True,
+        'username': 'oauth2',
         'extractor_args': {
             'youtube': {
                 'player_client': ['web']
