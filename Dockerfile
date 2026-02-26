@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
     git \
+    unzip \
     iproute2 \
     wireguard-tools \
     build-essential \
