@@ -26,9 +26,10 @@ This API is designed to be 1-click deployable to Koyeb using Docker.
    - Leave the `Run Command` blank (the Dockerfile entrypoint handles it automatically).
 5. **Environment Variables (Optional):**
    - `PORT`: Default is `8000`.
-   - `YOUTUBE_COOKIES`: A **Base64** encoded string of your `cookies.txt` file (Netscape format). Bypasses login/age-restriction errors.
-   - `USE_PROXY`: Overrides the built-in Cloudflare WARP proxy if you want to use a paid external proxy (e.g., `socks5://user:pass@1.1.1.1:1080`).
-6. **Instance Size:** At least `Eco Free` or `Micro` is recommended, as running Node.js (for token generation) and Wireguard uses moderate CPU.
+   - `YOUTUBE_COOKIES`: The **raw text** (Netscape format) of your `cookies.txt` file. Bypasses login/age-restriction errors.
+   - `USER_AGENT`: Optional. The User-Agent string to use for extraction. If you use cookies, this **must** match the browser that exported them.
+   - `USE_PROXY`: Overrides the built-in Cloudflare WARP proxy.
+6. **Instance Size:** A **Micro** (512MB) instance or higher is highly recommended. The PO Token generator uses `jsdom`, which is memory-intensive. I have limited the internal memory usage to 192MB to help, but very small instances (`Nano`/256MB) might still occasionally trigger a memory crash during token generation.
 7. Set the Exposed Port to match the `PORT` (e.g. `8000`).
 
 ## API Usage
