@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nodejs \
     npm \
     wget \
+    git \
     wireguard-tools \
     iproute2 \
     && rm -rf /var/lib/apt/lists/*
