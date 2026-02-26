@@ -4,15 +4,16 @@ This project is a FastAPI-based server that acts as a robust metadata extractor 
 
 It achieves this using a multi-layered bypass approach:
 1. **Cloudflare WARP (`wireproxy`)**: Automatically routes all requests through a residential Cloudflare edge node (SOCKS5), dodging datacenter IP blocks.
-2. **Dynamic PO Tokens (`youtube-po-token-generator`)**: Automatically generates and injects valid `visitorData` and `poToken` tokens for verification.
-3. **Cookie Injection**: Optionally accepts a Netscape `cookies.txt` file via Base64 environment variables for handling age-gated or heavily flagged videos.
-4. **Client Impersonation**: Spoofs active TV/iOS clients (`player_client=ios,tv`) utilizing `yt-dlp`'s built-in extractor arguments.
+2. **BgUtils POT Provider**: Integrates the `bgutil-ytdlp-pot-provider` plugin and a local HTTP server (port 4416) to automatically generate and inject high-quality PO tokens.
+3. **Cookie Injection**: Optionally accepts a Netscape `cookies.txt` file (raw text) for handling age-gated or heavily flagged videos.
+4. **Client Synchronization**: Automatically alternates between **Web** and **Android** clients, ensuring PO tokens are correctly validated by the respective playback protocols.
 
 ## Architecture & Boot Sequence
 - The application uses a single **Dockerfile**.
-- On boot, `entrypoint.sh` automatically registers an anonymous Cloudflare WARP tunnel using `wgcf`.
-- `wireproxy` runs in the background, mapping the WARP connection to a local `socks5://127.0.0.1:1080` server.
-- The `uvicorn` web server starts the FastAPI application, binding to `0.0.0.0:${PORT}`.
+- On boot, `entrypoint.sh` registers an anonymous Cloudflare WARP tunnel and starts `wireproxy`.
+- A background **BgUtils POT Provider** server is launched on port 4416, routed through the WARP proxy to ensure IP synchronization.
+- The `uvicorn` web server starts the FastAPI application.
+- The `bgutil-ytdlp-pot-provider` plugin for `yt-dlp` handles the automated handshake for visitor data and tokens.
 
 ## Deployment to Koyeb
 
@@ -26,10 +27,10 @@ This API is designed to be 1-click deployable to Koyeb using Docker.
    - Leave the `Run Command` blank (the Dockerfile entrypoint handles it automatically).
 5. **Environment Variables (Optional):**
    - `PORT`: Default is `8000`.
-   - `YOUTUBE_COOKIES`: The **raw text** (Netscape format) of your `cookies.txt` file. Bypasses login/age-restriction errors.
-   - `USER_AGENT`: Optional. The User-Agent string to use for extraction. If you use cookies, this **must** match the browser that exported them.
+   - `YOUTUBE_COOKIES`: The **raw text** (Netscape format) of your `cookies.txt` file.
+   - `USER_AGENT`: Optional. If using cookies, set this to match the browser used to export them.
    - `USE_PROXY`: Overrides the built-in Cloudflare WARP proxy.
-6. **Instance Size:** A **Micro** (512MB) instance or higher is highly recommended. The PO Token generator uses `jsdom`, which is memory-intensive. I have limited the internal memory usage to 192MB to help, but very small instances (`Nano`/256MB) might still occasionally trigger a memory crash during token generation.
+6. **Instance Size:** A **Micro** (512MB) instance or higher is recommended. While the new provider is more efficient, running Node.js, Wireguard, and FFmpeg concurrently requires decent headroom.
 7. Set the Exposed Port to match the `PORT` (e.g. `8000`).
 
 ## API Usage
