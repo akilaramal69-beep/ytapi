@@ -40,9 +40,9 @@ class ExtractRequest(BaseModel):
 def get_po_token(proxy: Optional[str] = None):
     """Generate visitorData and poToken using youtube-po-token-generator"""
     env = os.environ.copy()
-    # Limit memory usage for Node.js to stay within small Koyeb instance limits (e.g. 256MB/512MB)
-    # jsdom is memory intensive; stay around 192MB to leave room for the main app.
-    env["NODE_OPTIONS"] = "--max-old-space-size=192"
+    # Limit memory usage for Node.js to stay within small Koyeb instance limits (e.g. 512MB for Micro)
+    # jsdom is memory intensive; 320MB is a safer limit for Micro instances.
+    env["NODE_OPTIONS"] = "--max-old-space-size=320"
     if proxy:
         # The PO token generator uses `global-agent` which ONLY supports HTTP proxies, not SOCKS5.
         # So we route it to the specific HTTP proxy port we opened in wireproxy (8080).
