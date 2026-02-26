@@ -85,7 +85,8 @@ async def extract_info(req: ExtractRequest):
         cmd.extend(["--user-agent", ua])
         
         # Extractor args for client spoofing and optional tokens
-        ext_args = "youtube:player_client=android,mweb"
+        # We switch to 'web' client as it matches the PO token generator's script environment
+        ext_args = "youtube:player_client=web"
         if visitor_data and po_token:
             ext_args += f";visitor_data={visitor_data};po_token={po_token}"
         
