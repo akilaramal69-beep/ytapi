@@ -64,8 +64,8 @@ async def extract_info(req: ExtractRequest):
     cmd = ["python", "-m", "yt_dlp", "--dump-json", "--no-warnings", req.url]
 
     # 1. WARP Proxy (or Custom Proxy)
-    # Since we are testing locally without wireproxy right now, we will default to None if not provided
-    active_proxy = req.proxy or os.environ.get("USE_PROXY") 
+    # Default to the local wireproxy WARP tunnel
+    active_proxy = req.proxy or os.environ.get("USE_PROXY") or "socks5://127.0.0.1:1080"
     if active_proxy:
         cmd.extend(["--proxy", active_proxy])
 
