@@ -52,23 +52,30 @@ async def extract_info(req: ExtractRequest):
         else:
             cmd.append("--no-warnings")
             
-        if active_proxy:
-            cmd.extend(["--proxy", active_proxy])
+        # We don't use --proxy flag because it can override NO_PROXY for local POT provider requests.
+        # Instead, we pass the proxy through environment variables below.
+        
         if COOKIES_FILE:
             cmd.extend(["--cookies", COOKIES_FILE])
         cmd.extend(["--user-agent", ua])
         
         # Extractor args
-        # 1. Player client spoofing
         client = "web" if force_web else "android,mweb"
-        
-        # 2. Explicitly point to the local BgUtils POT provider server
-        # Even though it's supposed to be automatic, being explicit is safer
+        # We also try disable_innertube if we are forcing web, as it can help with some blocks
         ext_args = f"youtube:player_client={client};youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"
+        if force_web:
+            ext_args += ";disable_innertube=1"
         
         cmd.extend(["--extractor-args", ext_args])
         
         env = os.environ.copy()
+        # Set absolute proxy via environment for yt-dlp to respect NO_PROXY
+        if active_proxy:
+            # yt-dlp handles both HTTP and SOCKS through these env vars
+            env["ALL_PROXY"] = active_proxy
+            env["HTTP_PROXY"] = active_proxy
+            env["HTTPS_PROXY"] = active_proxy
+            
         # EXTREMELY IMPORTANT: Prevent yt-dlp from trying to use the proxy to talk to our local POT provider
         env["NO_PROXY"] = "127.0.0.1,localhost"
         

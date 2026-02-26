@@ -34,12 +34,11 @@ sleep 3
 # 3. Start BgUtils POT Provider server
 echo "Starting BgUtils POT Provider server on port 4416..."
 cd /app/bgutil-provider/server
-# We use the HTTP proxy for the provider server's outgoing requests to YouTube
-export HTTP_PROXY=http://127.0.0.1:8080
-export HTTPS_PROXY=http://127.0.0.1:8080
-# Explicitly set NO_PROXY for the provider server so it doesn't try to proxy its own listeners
-export NO_PROXY=127.0.0.1,localhost
-node build/main.js --port 4416 > /app/provider.log 2>&1 &
+# We use global-agent to force the Node.js process to use the HTTP proxy
+export GLOBAL_AGENT_HTTP_PROXY=http://127.0.0.1:8080
+export GLOBAL_AGENT_NO_PROXY=127.0.0.1,localhost
+# Start with global-agent bootstrap
+NODE_OPTIONS="-r global-agent/bootstrap" node build/main.js --port 4416 > /app/provider.log 2>&1 &
 POT_PID=$!
 cd /app
 
