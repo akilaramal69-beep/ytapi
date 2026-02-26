@@ -17,14 +17,21 @@ logger = logging.getLogger(__name__)
 # Load cookies if provided via environment variable
 COOKIES_FILE = None
 if os.environ.get("YOUTUBE_COOKIES"):
+    cookie_val = os.environ["YOUTUBE_COOKIES"]
     try:
-        cookies_decoded = base64.b64decode(os.environ["YOUTUBE_COOKIES"]).decode("utf-8")
+        # Try to decode from Base64 first
+        try:
+            cookies_decoded = base64.b64decode(cookie_val).decode("utf-8")
+        except Exception:
+            # If decoding fails, assume the user pasted raw Netscape text directly
+            cookies_decoded = cookie_val
+            
         fd, COOKIES_FILE = tempfile.mkstemp(suffix=".txt")
         with os.fdopen(fd, 'w', encoding='utf-8') as f:
             f.write(cookies_decoded)
-        logger.info("Loaded YouTube cookies from environment variables.")
+        logger.info("Loaded YouTube cookies from environment variables successfully.")
     except Exception as e:
-        logger.error(f"Failed to decode YOUTUBE_COOKIES: {e}")
+        logger.error(f"Failed to process YOUTUBE_COOKIES: {e}")
 
 class ExtractRequest(BaseModel):
     url: str
@@ -79,13 +86,13 @@ async def extract_info(req: ExtractRequest):
     visitor_data, po_token = get_po_token(active_proxy)
     if visitor_data and po_token:
         # Pass tokens to yt-dlp via extractor args
-        ext_args = f"youtube:visitor_data={visitor_data};po_token={po_token};player_client=ios,tv"
+        ext_args = f"youtube:visitor_data={visitor_data};po_token={po_token};player_client=android,mweb"
         cmd.extend(["--extractor-args", ext_args])
         logger.info("Injected PO token and customized player client.")
     else:
         logger.warning("Failed to generate PO token. Proceeding without it...")
         # Still apply client impersonation as fallback
-        cmd.extend(["--extractor-args", "youtube:player_client=ios,tv"])
+        cmd.extend(["--extractor-args", "youtube:player_client=android,mweb"])
 
     logger.info(f"Running command: {' '.join(cmd)}")
     try:
