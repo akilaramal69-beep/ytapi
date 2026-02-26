@@ -30,7 +30,7 @@ RUN wget -O /tmp/wireproxy.tar.gz https://github.com/pufferffish/wireproxy/relea
 RUN npm install -g youtube-po-token-generator
 
 # Setup BgUtils POT Provider
-RUN git clone --single-branch --branch v1.2.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /app/bgutil-provider \
+RUN git clone --single-branch --branch 1.2.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /app/bgutil-provider \
     && cd /app/bgutil-provider/server \
     && npm ci \
     && npx tsc \
