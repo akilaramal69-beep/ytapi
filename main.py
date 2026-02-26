@@ -71,8 +71,9 @@ async def extract_info(req: ExtractRequest):
             'youtube': {
                 'player_client': ['web']
             },
-            'youtubepot-bgutilhttp': {
-                'base_url': ['http://127.0.0.1:4416']
+            'youtubepot-bgutilscript': {
+                # Execute the JS file directly via Deno, bypassing the HTTP SOCKS5 trap
+                'script_path': ['/app/bgutil-provider/server/build/generate_once.js']
             }
         }
     }

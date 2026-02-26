@@ -36,31 +36,13 @@ PROXY_PID=$!
 # Give it a few seconds to establish connection
 sleep 3
 
-# 3. Start BgUtils POT Provider server
-echo "Starting BgUtils POT Provider server on port 4416..."
+# 3. Install Deno statically to solve JS challenges without OS-level glibc dependencies
+echo "Installing Deno for yt-dlp JavaScript challenge solving..."
+curl -fsSL https://deno.land/install.sh | sh
+export PATH="/root/.deno/bin:$PATH"
 
-# Ensure log file exists before tailing
-touch /app/provider.log
-
-# Tail the provider log to stdout in the background so it shows up in real-time on Koyeb
-tail -f /app/provider.log &
-TAIL_PID=$!
-
-cd /app/bgutil-provider/server
-# We use both global-agent and standard env vars for proxying
-export GLOBAL_AGENT_HTTP_PROXY=http://127.0.0.1:8080
-export GLOBAL_AGENT_NO_PROXY=127.0.0.1,localhost
-export HTTP_PROXY=http://127.0.0.1:8080
-export HTTPS_PROXY=http://127.0.0.1:8080
-export NO_PROXY=127.0.0.1,localhost
-
-# Start with global-agent bootstrap and memory limits
-NODE_OPTIONS="-r global-agent/bootstrap --max-old-space-size=400" node build/main.js --port 4416 > /app/provider.log 2>&1 &
-POT_PID=$!
-cd /app
-
-# Give the provider longer to initialize (sometimes takes a bit on nano instances)
-sleep 10
+# (Removed BgUtils HTTP Provider server to avoid localhost SOCKS5 proxy trap)
+# yt-dlp will now directly execute the extraction script via Deno using youtubepot-bgutilscript
 
 # 4. Start the FastAPI server using Uvicorn
 export PORT=${PORT:-8000}
