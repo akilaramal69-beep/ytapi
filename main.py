@@ -40,6 +40,9 @@ class ExtractRequest(BaseModel):
 def get_po_token(proxy: Optional[str] = None):
     """Generate visitorData and poToken using youtube-po-token-generator"""
     env = os.environ.copy()
+    # Limit memory usage for Node.js to stay within small Koyeb instance limits (e.g. 256MB/512MB)
+    # jsdom is memory intensive; stay around 192MB to leave room for the main app.
+    env["NODE_OPTIONS"] = "--max-old-space-size=192"
     if proxy:
         # The PO token generator uses `global-agent` which ONLY supports HTTP proxies, not SOCKS5.
         # So we route it to the specific HTTP proxy port we opened in wireproxy (8080).
@@ -93,6 +96,11 @@ async def extract_info(req: ExtractRequest):
         logger.warning("Failed to generate PO token. Proceeding without it...")
         # Still apply client impersonation as fallback
         cmd.extend(["--extractor-args", "youtube:player_client=android,mweb"])
+
+    # 4. User-Agent
+    # If using cookies, the User-Agent should ideally match the one used to export them.
+    ua = os.environ.get("USER_AGENT") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    cmd.extend(["--user-agent", ua])
 
     logger.info(f"Running command: {' '.join(cmd)}")
     try:
