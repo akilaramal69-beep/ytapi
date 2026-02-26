@@ -79,10 +79,13 @@ async def extract_info(req: ExtractRequest):
         
         # Ensure Node.js directory is explicitly in PATH for yt-dlp's JS runtime check
         current_path = env.get("PATH", "")
-        if "/usr/bin" not in current_path:
-            env["PATH"] = f"{current_path}:/usr/bin:/usr/local/bin"
+        # Prepend standard bin paths so node is found first
+        env["PATH"] = f"/usr/bin:/usr/local/bin:{current_path}"
             
         if active_proxy:
+            # Explicitly pass the proxy to yt-dlp to prevent IP mismatch leaks
+            cmd.extend(["--proxy", active_proxy])
+            # Also set env vars just in case other modules need them
             env["ALL_PROXY"] = active_proxy
             env["HTTP_PROXY"] = active_proxy
             env["HTTPS_PROXY"] = active_proxy
