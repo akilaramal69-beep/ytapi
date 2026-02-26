@@ -68,8 +68,12 @@ async def extract_info(req: ExtractRequest):
         
         cmd.extend(["--extractor-args", ext_args])
         
+        env = os.environ.copy()
+        # EXTREMELY IMPORTANT: Prevent yt-dlp from trying to use the proxy to talk to our local POT provider
+        env["NO_PROXY"] = "127.0.0.1,localhost"
+        
         logger.info(f"Running command: {' '.join(cmd)}")
-        return subprocess.run(cmd, capture_output=True, text=True)
+        return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
     # Attempt 1: Standard extraction
     result = run_ytdlp()

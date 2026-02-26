@@ -33,16 +33,25 @@ sleep 3
 
 # 3. Start BgUtils POT Provider server
 echo "Starting BgUtils POT Provider server on port 4416..."
-# We route the provider through the same WARP proxy to ensure token/IP synchronization
-# Global-agent is used for proxying in Node.js processes if they support it
 cd /app/bgutil-provider/server
-HTTP_PROXY=http://127.0.0.1:8080 HTTPS_PROXY=http://127.0.0.1:8080 node build/main.js &
+# We use the HTTP proxy for the provider server's outgoing requests to YouTube
+export HTTP_PROXY=http://127.0.0.1:8080
+export HTTPS_PROXY=http://127.0.0.1:8080
+# Explicitly set NO_PROXY for the provider server so it doesn't try to proxy its own listeners
+export NO_PROXY=127.0.0.1,localhost
+node build/main.js --port 4416 > /app/provider.log 2>&1 &
 POT_PID=$!
 cd /app
+
+# Give the provider a moment to initialize
+sleep 2
 
 # 4. Start the FastAPI server using Uvicorn
 export PORT=${PORT:-8000}
 echo "Starting Uvicorn FastAPI server on port $PORT..."
+echo "--- Logs from BgUtils Provider (if any) ---"
+cat /app/provider.log || true
+echo "------------------------------------------"
 exec uvicorn main:app --host 0.0.0.0 --port $PORT
 
 # Note: For production use, wireproxy run as a background task. 
