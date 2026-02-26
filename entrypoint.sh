@@ -42,15 +42,16 @@ NODE_OPTIONS="-r global-agent/bootstrap" node build/main.js --port 4416 > /app/p
 POT_PID=$!
 cd /app
 
+# Tail the provider log to stdout in the background so it shows up in real-time on Koyeb
+tail -f /app/provider.log &
+TAIL_PID=$!
+
 # Give the provider a moment to initialize
-sleep 2
+sleep 5
 
 # 4. Start the FastAPI server using Uvicorn
 export PORT=${PORT:-8000}
 echo "Starting Uvicorn FastAPI server on port $PORT..."
-echo "--- Logs from BgUtils Provider (if any) ---"
-cat /app/provider.log || true
-echo "------------------------------------------"
 exec uvicorn main:app --host 0.0.0.0 --port $PORT
 
 # Note: For production use, wireproxy run as a background task. 

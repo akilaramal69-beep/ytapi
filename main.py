@@ -60,8 +60,9 @@ async def extract_info(req: ExtractRequest):
         cmd.extend(["--user-agent", ua])
         
         # Extractor args
-        client = "web" if force_web else "android,mweb"
-        # We also try disable_innertube if we are forcing web, as it can help with some blocks
+        # iOS client is currently more robust against bot detection in some regions
+        client = "ios" if force_web else "android,mweb"
+        # We also try disable_innertube if we are forcing ios, as it can help with some blocks
         ext_args = f"youtube:player_client={client};youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"
         if force_web:
             ext_args += ";disable_innertube=1"
