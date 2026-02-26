@@ -55,8 +55,8 @@ async def extract_info(req: ExtractRequest):
     """Extract metadata using yt-dlp with WARP, automatic PO Tokens via BgUtils, and Cookies"""
     logger.info("Starting native yt-dlp extraction...")
     
-    # Use socks5h for remote DNS resolution via WARP
-    active_proxy = req.proxy or os.environ.get("USE_PROXY") or "socks5h://127.0.0.1:1080"
+    # Use standard socks5 (no 'h') to prevent remote DNS locking on localhost
+    active_proxy = req.proxy or os.environ.get("USE_PROXY") or "socks5://127.0.0.1:1080"
     ua = os.environ.get("USER_AGENT") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     
     # Define the arguments for yt_dlp object
@@ -67,7 +67,7 @@ async def extract_info(req: ExtractRequest):
         'verbose': True,
         'no_warnings': False,
         'nocheckcertificate': True,
-        'username': 'oauth2',
+        # OAuth2 is patched. Using Cookies exclusively.
         'extractor_args': {
             'youtube': {
                 'player_client': ['web']
