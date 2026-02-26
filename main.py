@@ -70,41 +70,47 @@ def get_po_token(proxy: Optional[str] = None):
 
 @app.post("/extract")
 async def extract_info(req: ExtractRequest):
-    """Extract metadata using yt-dlp with WARP, PO Tokens, and Cookies"""
+    """Extract metadata using yt-dlp with WARP, optional PO Tokens, and Cookies"""
     
-    # Base command (Running through python module to avoid PATH issues on Windows local)
-    cmd = ["python", "-m", "yt_dlp", "--dump-json", "--no-warnings", req.url]
-
-    # 1. WARP Proxy (or Custom Proxy)
-    # Default to the local wireproxy WARP tunnel
+    # Base command logic
     active_proxy = req.proxy or os.environ.get("USE_PROXY") or "socks5://127.0.0.1:1080"
-    if active_proxy:
-        cmd.extend(["--proxy", active_proxy])
-
-    # 2. Cookies
-    if COOKIES_FILE:
-        cmd.extend(["--cookies", COOKIES_FILE])
-
-    # 3. PO Tokens
-    visitor_data, po_token = get_po_token(active_proxy)
-    if visitor_data and po_token:
-        # Pass tokens to yt-dlp via extractor args
-        ext_args = f"youtube:visitor_data={visitor_data};po_token={po_token};player_client=android,mweb"
-        cmd.extend(["--extractor-args", ext_args])
-        logger.info("Injected PO token and customized player client.")
-    else:
-        logger.warning("Failed to generate PO token. Proceeding without it...")
-        # Still apply client impersonation as fallback
-        cmd.extend(["--extractor-args", "youtube:player_client=android,mweb"])
-
-    # 4. User-Agent
-    # If using cookies, the User-Agent should ideally match the one used to export them.
     ua = os.environ.get("USER_AGENT") or "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    cmd.extend(["--user-agent", ua])
+    
+    def run_ytdlp(visitor_data=None, po_token=None):
+        cmd = ["python", "-m", "yt_dlp", "--dump-json", "--no-warnings", req.url]
+        if active_proxy:
+            cmd.extend(["--proxy", active_proxy])
+        if COOKIES_FILE:
+            cmd.extend(["--cookies", COOKIES_FILE])
+        cmd.extend(["--user-agent", ua])
+        
+        # Extractor args for client spoofing and optional tokens
+        ext_args = "youtube:player_client=android,mweb"
+        if visitor_data and po_token:
+            ext_args += f";visitor_data={visitor_data};po_token={po_token}"
+        
+        cmd.extend(["--extractor-args", ext_args])
+        
+        logger.info(f"Running command: {' '.join(cmd)}")
+        return subprocess.run(cmd, capture_output=True, text=True)
 
-    logger.info(f"Running command: {' '.join(cmd)}")
+    # Attempt 1: Without PO Tokens (Faster/Lighter)
+    result = run_ytdlp()
+    
+    # Check if we got the "bot" block error
+    if result.returncode != 0 and "Sign in to confirm you’re not a bot" in result.stderr:
+        logger.warning("Simple extraction blocked by bot detection. Attempting with PO Tokens fallback...")
+        
+        # Attempt 2: Generate PO tokens and retry
+        visitor_data, po_token = get_po_token(active_proxy)
+        if visitor_data and po_token:
+            result = run_ytdlp(visitor_data, po_token)
+        else:
+            logger.error("Failed to generate fallback PO tokens.")
+            # We still proceed to return the original error if fallback generation failed
+
+    # Final result handling
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             logger.error(f"yt-dlp error: {result.stderr}")
             raise HTTPException(status_code=400, detail=result.stderr)
@@ -112,6 +118,7 @@ async def extract_info(req: ExtractRequest):
         info = json.loads(result.stdout)
         return info
     except Exception as e:
+        if isinstance(e, HTTPException): raise e
         logger.error(f"Execution error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
