@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+wgcf-account.json
+wgcf-profile.conf
+youtube-po-token-generator/
+provider.log
+.gemini/
+.env
