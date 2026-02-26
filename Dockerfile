@@ -5,6 +5,7 @@ FROM python:3.11-slim
 # - curl, inetutils-ping, ca-certificates (general networking tasks)
 # - nodejs & npm (for youtube-po-token-generator)
 # - wireguard-tools, iproute2, resolvconf (for WARP / wgcf if needed)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
@@ -13,9 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     iproute2 \
     wireguard-tools \
+    build-essential \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js from official NodeSource to ensure we get a modern version and working npm
+# Install Node.js from official NodeSource
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && ln -sf /usr/bin/node /usr/bin/nodejs \
@@ -30,16 +37,14 @@ RUN wget -O /tmp/wireproxy.tar.gz https://github.com/pufferffish/wireproxy/relea
     && tar -xzf /tmp/wireproxy.tar.gz -C /usr/local/bin/ \
     && rm /tmp/wireproxy.tar.gz
 
-# Install youtube-po-token-generator and global-agent
+# Install global tools
 RUN npm install -g youtube-po-token-generator global-agent
 
 # Setup BgUtils POT Provider
-RUN git clone --single-branch --branch 1.2.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /app/bgutil-provider \
-    && cd /app/bgutil-provider/server \
-    && npm ci \
-    && npm install global-agent \
-    && npx tsc \
-    && python3 -m pip install -U bgutil-ytdlp-pot-provider
+RUN git clone --single-branch --branch 1.2.2 https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /app/bgutil-provider
+RUN cd /app/bgutil-provider/server && npm ci && npm install global-agent
+RUN cd /app/bgutil-provider/server && npx tsc
+RUN python3 -m pip install -U bgutil-ytdlp-pot-provider
 
 WORKDIR /app
 
